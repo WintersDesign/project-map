@@ -22,17 +22,8 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
   z-index: 1000;
   position: relative;
 }
-.logo-area { display: flex; align-items: center; gap: 14px; }
-.logo-mark {
-  width: 44px; height: 44px;
-  background: linear-gradient(135deg, #0faecd, #0d8eaa);
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 900; font-size: 18px; color: #fff; letter-spacing: 1px;
-}
-.logo-text { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: 1px; }
-.logo-text span { color: #0faecd; }
-.header-subtitle { font-size: 13px; color: #8899aa; margin-top: 2px; }
+.logo-area { display: flex; align-items: center; }
+.logo-area img { height: 60px; object-fit: contain; }
 
 /* Stats bar */
 .stats-bar {
@@ -90,18 +81,39 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
 .project-list::-webkit-scrollbar-track { background: #0f1f33; }
 .project-list::-webkit-scrollbar-thumb { background: #2a4060; border-radius: 3px; }
 .project-card {
-  background: #132840; border-radius: 8px;
-  padding: 10px 12px; margin-bottom: 6px;
-  border-left: 3px solid #2a4060;
-  cursor: pointer; transition: all 0.2s;
+  background: #101e30; border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 8px;
+  border: 1px solid #1a3050;
+  cursor: pointer; transition: all 0.25s ease;
   font-size: 12px;
+  position: relative;
+  overflow: hidden;
 }
-.project-card:hover { background: #1a3555; border-left-color: #0faecd; }
-.project-card.status-complete { border-left-color: #2ecc71; }
-.project-card.status-in-progress { border-left-color: #f39c12; }
-.project-card-name { font-weight: 600; color: #fff; margin-bottom: 2px; }
-.project-card-customer { color: #8899aa; font-size: 11px; }
-.project-card-detail { color: #6688aa; font-size: 11px; margin-top: 3px; }
+.project-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px; border-radius: 10px 0 0 10px;
+}
+.project-card:hover { background: #162a44; transform: translateX(3px); border-color: #2a4a6a; }
+.project-card.status-complete::before { background: linear-gradient(180deg, #2ecc71, #27ae60); }
+.project-card.status-in-progress::before { background: linear-gradient(180deg, #f39c12, #e67e22); }
+.project-card.status-not-under-tsa::before { background: linear-gradient(180deg, #3498db, #2980b9); }
+.project-card.status-complete:hover { border-color: rgba(46,204,113,0.3); box-shadow: 0 2px 12px rgba(46,204,113,0.1); }
+.project-card.status-in-progress:hover { border-color: rgba(243,156,18,0.3); box-shadow: 0 2px 12px rgba(243,156,18,0.1); }
+.project-card.status-not-under-tsa:hover { border-color: rgba(52,152,219,0.3); box-shadow: 0 2px 12px rgba(52,152,219,0.1); }
+.project-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.project-card-name { font-weight: 600; color: #fff; font-size: 13px; }
+.project-card-badge {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 10px;
+}
+.status-complete .project-card-badge { background: rgba(46,204,113,0.15); color: #2ecc71; }
+.status-in-progress .project-card-badge { background: rgba(243,156,18,0.15); color: #f39c12; }
+.status-not-under-tsa .project-card-badge { background: rgba(52,152,219,0.15); color: #3498db; }
+.project-card-customer { color: #8899aa; font-size: 11px; margin-bottom: 6px; }
+.project-card-meta { display: flex; align-items: center; gap: 12px; color: #556b80; font-size: 11px; }
+.project-card-meta svg { width: 12px; height: 12px; flex-shrink: 0; opacity: 0.6; }
+.project-card-meta-item { display: flex; align-items: center; gap: 4px; }
 
 /* Map */
 #map { flex: 1; background: #0d1b2a; }
@@ -155,11 +167,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
 
 <div class="header">
   <div class="logo-area">
-    <div class="logo-mark">FG</div>
-    <div>
-      <div class="logo-text">Flex<span>Gen</span></div>
-      <div class="header-subtitle">Project Experience Map</div>
-    </div>
+    <img src="flexgen-logo.png" alt="FlexGen - Project Experience Map">
   </div>
   <div class="stats-bar" id="statsBar"></div>
 </div>
@@ -604,11 +612,19 @@ function applyFilters() {
     totalMWh += (p.mwh || 0);
 
     const card = document.createElement('div');
-    card.className = 'project-card status-' + (p.status === 'Complete' ? 'complete' : 'in-progress');
+    const statusClass = p.status === 'Complete' ? 'complete' : p.status === 'Not Under TSA' ? 'not-under-tsa' : 'in-progress';
+    const statusLabel = p.status === 'Complete' ? 'Complete' : p.status === 'Not Under TSA' ? 'Not Under TSA' : 'In Progress';
+    card.className = 'project-card status-' + statusClass;
     card.innerHTML = `
-      <div class="project-card-name">${p.name}</div>
+      <div class="project-card-header">
+        <div class="project-card-name">${p.name}</div>
+        <span class="project-card-badge">${statusLabel}</span>
+      </div>
       <div class="project-card-customer">${p.customer}</div>
-      <div class="project-card-detail">${p.city}, ${p.state} &bull; ${p.mw} MW / ${p.mwh} MWh</div>
+      <div class="project-card-meta">
+        <span class="project-card-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.city}, ${p.state}</span>
+        <span class="project-card-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>${p.mw} MW / ${p.mwh} MWh</span>
+      </div>
     `;
     card.addEventListener('click', () => {
       map.setView([p.lat, p.lng], 12);
