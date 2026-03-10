@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlexGen Project Experience Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0d1b2a; color: #e0e0e0; }
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, #0d1b2a 0%, #1b2d4a 100%);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 3px solid #0faecd;
+  z-index: 1000;
+  position: relative;
+}
+.logo-area { display: flex; align-items: center; gap: 14px; }
+.logo-mark {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, #0faecd, #0d8eaa);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 18px; color: #fff; letter-spacing: 1px;
+}
+.logo-text { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: 1px; }
+.logo-text span { color: #0faecd; }
+.header-subtitle { font-size: 13px; color: #8899aa; margin-top: 2px; }
+
+/* Stats bar */
+.stats-bar {
+  display: flex; gap: 24px; align-items: center;
+}
+.stat-item { text-align: center; }
+.stat-value { font-size: 22px; font-weight: 700; color: #0faecd; }
+.stat-label { font-size: 11px; color: #8899aa; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Layout */
+.main-container { display: flex; height: calc(100vh - 80px); }
+
+/* Sidebar */
+.sidebar {
+  width: 300px; min-width: 300px;
+  background: #0f1f33;
+  border-right: 1px solid #1a3050;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 16px;
+  background: #132840;
+  border-bottom: 1px solid #1a3050;
+  font-size: 14px; font-weight: 600; color: #0faecd;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.filter-section { padding: 12px 16px; border-bottom: 1px solid #1a3050; }
+.filter-label { font-size: 11px; color: #8899aa; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; }
+.filter-select {
+  width: 100%; padding: 8px 10px;
+  background: #1a3050; color: #e0e0e0;
+  border: 1px solid #2a4060; border-radius: 6px;
+  font-size: 13px; cursor: pointer;
+}
+.filter-select:focus { outline: none; border-color: #0faecd; }
+
+.search-input {
+  width: 100%; padding: 8px 10px;
+  background: #1a3050; color: #e0e0e0;
+  border: 1px solid #2a4060; border-radius: 6px;
+  font-size: 13px;
+}
+.search-input::placeholder { color: #556677; }
+.search-input:focus { outline: none; border-color: #0faecd; }
+
+/* Legend */
+.legend { padding: 12px 16px; border-bottom: 1px solid #1a3050; }
+.legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+/* Project list */
+.project-list { flex: 1; overflow-y: auto; padding: 8px; }
+.project-list::-webkit-scrollbar { width: 6px; }
+.project-list::-webkit-scrollbar-track { background: #0f1f33; }
+.project-list::-webkit-scrollbar-thumb { background: #2a4060; border-radius: 3px; }
+.project-card {
+  background: #132840; border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 6px;
+  border-left: 3px solid #2a4060;
+  cursor: pointer; transition: all 0.2s;
+  font-size: 12px;
+}
+.project-card:hover { background: #1a3555; border-left-color: #0faecd; }
+.project-card.status-complete { border-left-color: #2ecc71; }
+.project-card.status-in-progress { border-left-color: #f39c12; }
+.project-card-name { font-weight: 600; color: #fff; margin-bottom: 2px; }
+.project-card-customer { color: #8899aa; font-size: 11px; }
+.project-card-detail { color: #6688aa; font-size: 11px; margin-top: 3px; }
+
+/* Map */
+#map { flex: 1; background: #0d1b2a; }
+
+/* Leaflet popup override */
+.leaflet-popup-content-wrapper {
+  background: #132840 !important;
+  color: #e0e0e0 !important;
+  border-radius: 10px !important;
+  border: 1px solid #0faecd !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+}
+.leaflet-popup-tip { background: #132840 !important; }
+.leaflet-popup-close-button { color: #8899aa !important; }
+.popup-title { font-size: 15px; font-weight: 700; color: #0faecd; margin-bottom: 6px; }
+.popup-customer { font-size: 13px; color: #aabbcc; margin-bottom: 8px; }
+.popup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+.popup-label { font-size: 11px; color: #667788; text-transform: uppercase; }
+.popup-value { font-size: 13px; color: #e0e0e0; font-weight: 500; }
+.popup-status {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600; margin-top: 4px;
+}
+.popup-status.complete { background: rgba(46,204,113,0.2); color: #2ecc71; }
+.popup-status.in-progress { background: rgba(243,156,18,0.2); color: #f39c12; }
+
+/* Cluster overrides */
+.marker-cluster-small { background-color: rgba(15,174,205,0.3) !important; }
+.marker-cluster-small div { background-color: rgba(15,174,205,0.7) !important; color: #fff !important; }
+.marker-cluster-medium { background-color: rgba(15,174,205,0.4) !important; }
+.marker-cluster-medium div { background-color: rgba(15,174,205,0.8) !important; color: #fff !important; }
+.marker-cluster-large { background-color: rgba(15,174,205,0.5) !important; }
+.marker-cluster-large div { background-color: rgba(15,174,205,0.9) !important; color: #fff !important; }
+
+/* Toggle sidebar on mobile */
+.sidebar-toggle {
+  display: none; position: absolute; top: 90px; left: 10px;
+  z-index: 1000; background: #132840; color: #0faecd;
+  border: 1px solid #0faecd; border-radius: 6px;
+  padding: 8px 12px; cursor: pointer; font-size: 14px;
+}
+@media (max-width: 768px) {
+  .sidebar { position: absolute; z-index: 999; left: -300px; transition: left 0.3s; height: calc(100vh - 80px); }
+  .sidebar.open { left: 0; }
+  .sidebar-toggle { display: block; }
+  .stats-bar { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-area">
+    <div class="logo-mark">FG</div>
+    <div>
+      <div class="logo-text">Flex<span>Gen</span></div>
+      <div class="header-subtitle">Project Experience Map</div>
+    </div>
+  </div>
+  <div class="stats-bar" id="statsBar"></div>
+</div>
+
+<button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">&#9776; Filters</button>
+
+<div class="main-container">
+  <div class="sidebar">
+    <div class="sidebar-header">Filters &amp; Projects</div>
+    <div class="filter-section">
+      <div class="filter-label">Search</div>
+      <input type="text" class="search-input" id="searchInput" placeholder="Project, customer, city...">
+    </div>
+    <div class="filter-section">
+      <div class="filter-label">Status</div>
+      <select class="filter-select" id="filterStatus">
+        <option value="all">All Statuses</option>
+        <option value="Complete">Complete</option>
+        <option value="In Progress">In Progress</option>
+      </select>
+    </div>
+    <div class="filter-section">
+      <div class="filter-label">State / Region</div>
+      <select class="filter-select" id="filterState"><option value="all">All States</option></select>
+    </div>
+    <div class="filter-section">
+      <div class="filter-label">Contract Type</div>
+      <select class="filter-select" id="filterContract"><option value="all">All Types</option></select>
+    </div>
+    <div class="filter-section">
+      <div class="filter-label">ISO / Market</div>
+      <select class="filter-select" id="filterISO"><option value="all">All ISOs</option></select>
+    </div>
+    <div class="legend">
+      <div class="filter-label">Legend</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div> Complete</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f39c12"></div> In Progress</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3498db"></div> Not Under TSA</div>
+    </div>
+    <div class="sidebar-header" style="font-size:12px">Projects (<span id="projectCount">0</span>)</div>
+    <div class="project-list" id="projectList"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+// ── Geocode lookup ──
+const GEO = {
+"Glendale,California":[34.14,-118.26],"Harligen,Texas":[26.19,-97.69],"Clewiston,Florida":[26.75,-80.93],
+"Okechobee,Florida":[27.24,-80.83],"Gatesville,Texas":[31.44,-97.74],"Alvin,Texas":[29.42,-95.24],
+"Los Banos (Merced County),California":[37.06,-120.85],"Lansing,Iowa":[43.36,-91.22],
+"San Jose,California":[37.34,-121.89],"Porterville,California":[36.07,-119.02],
+"Creston,Iowa":[41.06,-94.36],"Yuma,Arizona":[32.69,-114.63],"Long Beach,California":[33.77,-118.19],
+"Melba,Idaho":[43.38,-116.53],"Cameron,South Carolina":[33.56,-80.71],
+"Nevada,Nevada":[39.16,-119.77],"Houston,Texas":[29.76,-95.37],"Richgrove,California":[35.80,-119.11],
+"Huffman,Texas":[30.04,-95.09],"Panguitch,Utah":[37.82,-112.44],
+"Oklahoma City,Oklahoma":[35.47,-97.52],"Rancho Cucamonga,California":[34.11,-117.59],
+"Kanawha County,West Virginia":[38.35,-81.61],"Lebec,California":[34.84,-118.86],
+"San Angelo,Texas":[31.46,-100.44],"San Juan,Texas":[26.19,-98.16],
+"Fort Stockton,Texas":[30.89,-102.88],"Pecos,Texas":[31.42,-103.49],"Pyote,Texas":[31.54,-103.12],
+"King Hill,Idaho":[43.00,-115.19],"Mountain Home,Idaho":[43.13,-115.69],
+"Weiser,Idaho":[44.25,-116.97],"Minneapolis,Kansas":[39.12,-97.71],
+"Lower Hudson Valley,New York":[41.20,-73.96],"Cidra,Puerto Rico":[18.18,-66.16],
+"Yabucoa,Puerto Rico":[18.05,-65.88],"Raeford,North Carolina":[34.98,-79.22],
+"Hope Mills,North Carolina":[34.97,-78.95],"Beulaville,North Carolina":[34.93,-77.77],
+"Pinnacle,North Carolina":[36.35,-80.46],"New Bern,North Carolina":[35.11,-77.04],
+"Bolivia,North Carolina":[34.07,-78.15],"Maysville,North Carolina":[34.91,-77.23],
+"Lillington,North Carolina":[35.40,-78.81],"Asheboro,North Carolina":[35.71,-79.81],
+"Rockingham,North Carolina":[34.94,-79.77],"Wake Forest,North Carolina":[35.98,-78.51],
+"Enfield,North Carolina":[36.18,-77.67],"Pinetops,North Carolina":[35.79,-77.64],
+"Rocky Point,North Carolina":[34.43,-77.88],"Hubert,North Carolina":[34.67,-77.23],
+"Fayetteville,North Carolina":[35.05,-78.88],"Goldsboro,North Carolina":[35.38,-78.00],
+"Fort Wayne,Indiana":[41.08,-85.14],"Columbia City,Indiana":[41.16,-85.49],
+"Wheatfield,Indiana":[41.20,-87.06],"Sherwood,Oregon":[45.36,-122.84],
+"Seguin,Texas":[29.57,-97.96],"Abbott,Texas":[31.88,-97.07],
+"Calipatria,California":[33.13,-115.51],"Granbury,Texas":[32.44,-97.79],
+"La Porte,Texas":[29.67,-95.02],"Grand Prairie,Texas":[32.75,-96.99],
+"Arlington,Texas":[32.74,-97.11],"San Joaquin,California":[36.61,-120.19],
+"Fort Madison,Iowa":[40.63,-91.32],"Sheboygan,Wisconsin":[43.75,-87.71],
+"Nekoosa,Wisconsin":[44.31,-89.90],"Potosi,Wisconsin":[42.68,-90.69],
+"Dallas,Texas":[32.78,-96.80],"Mission,Texas":[26.22,-98.33],
+"Alamo,Texas":[26.18,-98.12],"Mercedes,Texas":[26.15,-97.91],
+"Bay City,Texas":[28.98,-95.97],"Rio Grande City,Texas":[26.38,-98.82],
+"Elsa,Texas":[26.29,-98.00],"Santa Rosa,Texas":[26.26,-97.83],
+"Los Fresnos,Texas":[26.07,-97.48],"Harlingen,Texas":[26.19,-97.70],
+"Liberty Hill,Texas":[30.66,-97.92],"Mason,Texas":[30.75,-99.23],
+"Eagle Pass,Texas":[28.71,-100.50],"Zapata,Texas":[26.91,-99.27],
+"Victoria,Texas":[28.81,-96.99],"League City,Texas":[29.51,-95.09],
+"Odessa,Texas":[31.85,-102.37],"San Antonio,Texas":[29.42,-98.49],
+"Sweeny,Texas":[29.04,-95.70],"Brazoria,Texas":[29.04,-95.57],
+"Dickinson,Texas":[29.46,-95.05],"Texas City,Texas":[29.38,-94.90],
+"Romulus,Michigan":[42.22,-83.39],"Tucker,Georgia":[33.86,-84.22],
+"Holyoke,Massachusetts":[42.20,-72.62],"Ipswich,Massachusetts":[42.68,-70.84],
+"Douglas,Massachusetts":[42.05,-71.74],"Groton,Massachusetts":[42.61,-71.57],
+"Holden,Massachusetts":[42.35,-71.86],"Paxton,Massachusetts":[42.31,-71.93],
+"Wakefield,Massachusetts":[42.50,-71.07],"Danville,Virginia":[36.59,-79.39],
+"Midlothian,Virginia":[37.50,-77.65],"West Columbia,Texas":[29.23,-95.65],
+"Warsaw,New York":[42.74,-78.13],"Pomona,New York":[41.17,-74.04],
+"Warwick,New York":[41.26,-74.36],"Goshen,New York":[41.40,-74.32],
+"Croton-On-Hudson,New York":[41.21,-73.89],"Allegany,New York":[42.09,-78.49],
+"Castleton-On-Hudson,New York":[42.52,-73.75],"Delanson,New York":[42.75,-74.19],
+"Filer,Idaho":[42.57,-114.61],"Rio Hondo,Texas":[26.24,-97.58],
+"Wilbraham,Massachusetts":[42.12,-72.43],"East Brookfield,Massachusetts":[42.22,-72.05],
+"Ware,Massachusetts":[42.26,-72.24],"Sandwich,Massachusetts":[41.76,-70.49],
+"Amherst,Massachusetts":[42.38,-72.52],"Hampden,Massachusetts":[42.06,-72.41],
+"Palm Springs,California":[33.83,-116.55],"Thousand Oaks,California":[34.17,-118.84],
+"Santa Paula,California":[34.35,-119.06],"Winters,California":[38.52,-121.97],
+"Wichita,Kansas":[37.69,-97.34],"St Cloud,Florida":[28.25,-81.28],
+"Brandywine,Maryland":[38.70,-76.85],"La Grange,North Carolina":[35.31,-77.79],
+"Wilson,North Carolina":[35.72,-77.92],"Greenville,North Carolina":[35.61,-77.37],
+"North Dartmouth,Massachusetts":[41.64,-70.97],"Sharon,Massachusetts":[42.12,-71.18],
+"Chatham,Massachusetts":[41.68,-69.96],"North Dighton,Massachusetts":[41.86,-71.12],
+"Palmer,Massachusetts":[42.16,-72.33],"Fort Mohave,Arizona":[35.06,-114.59],
+"Sahuarita,Arizona":[31.94,-110.96],"Cochise,Arizona":[32.00,-109.90],
+"Gila Bend,Arizona":[32.95,-112.72],"Hyder,Arizona":[32.93,-113.58],
+"Buckeye,Arizona":[33.37,-112.58],"Youngtown,Arizona":[33.59,-112.30],
+"Ocotillo Wells,California":[33.16,-116.13],"Irving,Texas":[32.81,-96.95],
+"Rothienorman,International":[57.46,-2.41],"Algarve,International":[37.08,-7.93],
+"Summerside,International":[46.39,-63.79],"Nuevo Leom,International":[25.67,-100.31],
+"Insurgentes,International":[24.26,-111.58],"Port of Israel,International":[32.08,34.79],
+"Or Haner,International":[31.30,34.40],"Brantford,International":[43.14,-80.27],
+"Ajax,International":[43.85,-79.03],"Woodstock,International":[43.13,-80.75],
+"Mississauga,International":[43.59,-79.64],"Belleville,International":[44.16,-77.38],
+"Etobicoke,International":[43.64,-79.56],"Sarnia,International":[42.97,-82.40],
+"Corunna,International":[42.88,-82.43],"Windsor,International":[42.32,-83.04],
+"Tiverton,International":[44.09,-81.56],"Fort Erie,International":[42.91,-79.04],
+"Utopia,International":[44.43,-79.94],
+"Nivala,International":[63.93,24.97],
+"Baja California Sur,International":[24.14,-110.31],
+"Multiple,Wisconsin":[43.78,-89.50]
+};
+
+// ── Project data ──
+const PROJECTS = [
+{name:"Grayson Repowering",customer:"ARB",city:"Glendale",state:"California",type:"Product",iso:"CAISO",bess:"CATL",mw:75,mwh:300,status:"In Progress",year:2026,cod:"8/5/2026"},
+{name:"Citrus Flatts",customer:"East Point Energy, LLC",city:"Harligen",state:"Texas",type:"Product",iso:"ERCOT",bess:"CATL",mw:100,mwh:200,status:"In Progress",year:2026,cod:"4/14/2026"},
+{name:"Public Safety",customer:"AGT",city:"Clewiston",state:"Florida",type:"Product",iso:"Southeast",bess:"Risen",mw:0.375,mwh:0.75,status:"Complete",year:2025,cod:"4/26/2025"},
+{name:"Admin Building",customer:"AGT",city:"Okechobee",state:"Florida",type:"Product",iso:"Southeast",bess:"Risen",mw:0.25,mwh:0.5,status:"Complete",year:2025,cod:"4/9/2025"},
+{name:"Veterans Building",customer:"AGT",city:"Okechobee",state:"Florida",type:"Product",iso:"Southeast",bess:"Risen",mw:0.25,mwh:0.5,status:"Complete",year:2025,cod:"3/22/2025"},
+{name:"Ryan Storage",customer:"Glidepath",city:"Gatesville",state:"Texas",type:"Product",iso:"ERCOT",bess:"SunGrow",mw:50,mwh:100,status:"In Progress",year:2027,cod:"2/1/2027"},
+{name:"Big Cypress - Public Safety",customer:"AGT",city:"Clewiston",state:"Florida",type:"Product",iso:"Southeast",bess:"Risen",mw:0.25,mwh:0.5,status:"Complete",year:2023,cod:"2/28/2023"},
+{name:"Soho",customer:"Greenflash Infrastructure L.P.",city:"Alvin",state:"Texas",type:"Product",iso:"ERCOT",bess:"SunGrow",mw:400,mwh:800,status:"In Progress",year:2026,cod:"4/22/2026"},
+{name:"Wright Merced",customer:"Hyperstrong / Stellar",city:"Los Banos (Merced County)",state:"California",type:"HybridOS Implementation",iso:"CAISO",bess:"HyperStrong",mw:80,mwh:320,status:"In Progress",year:2026,cod:"7/1/2026"},
+{name:"Big Cypress - Health Clinic",customer:"AGT",city:"Clewiston",state:"Florida",type:"Product",iso:"Southeast",bess:"Risen",mw:0.25,mwh:0.5,status:"Complete",year:2023,cod:"2/28/2023"},
+{name:"Big Cypress",customer:"AGT",city:"Clewiston",state:"Florida",type:"Product",iso:"Southeast",bess:"Risen",mw:0.125,mwh:0.25,status:"Complete",year:2023,cod:"11/30/2023"},
+{name:"Nivala",customer:"Ingrid Capacity",city:"Nivala",state:"International",type:"HybridOS Implementation",iso:"International",bess:"CATL",mw:70,mwh:140,status:"In Progress",year:2026,cod:"10/26/2026"},
+{name:"Lansing",customer:"Interstate Power & Light",city:"Lansing",state:"Iowa",type:"Product",iso:"MISO",bess:"CATL",mw:150,mwh:600,status:"In Progress",year:2026,cod:"12/6/2026"},
+{name:"Hummingbird (TS)",customer:"esVolta",city:"San Jose",state:"California",type:"Transition Services",iso:"CAISO",bess:"Powin",mw:0,mwh:403.2,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Frankie Billie",customer:"AGT",city:"Clewiston",state:"Florida",type:"Product",iso:"Southeast",bess:"Risen",mw:0.25,mwh:0.5,status:"Complete",year:2023,cod:"2/28/2023"},
+{name:"Anode",customer:"Ameresco",city:"Porterville",state:"California",type:"AC Block",iso:"CAISO",bess:"CATL",mw:225,mwh:900,status:"Complete",year:2025,cod:"10/31/2025"},
+{name:"Bottleneck",customer:"Ormat",city:"Richgrove",state:"California",type:"Transition Services",iso:"CAISO",bess:"Powin",mw:93.75,mwh:375,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Phase 3 (IPL)",customer:"Interstate Power & Light",city:"Multiple",state:"Wisconsin",type:"Product",iso:"MISO",bess:"CATL",mw:100,mwh:488,status:"In Progress",year:2026,cod:"11/1/2026"},
+{name:"Creston",customer:"Interstate Power & Light",city:"Creston",state:"Iowa",type:"Product",iso:"MISO",bess:"CATL",mw:40,mwh:160,status:"In Progress",year:2026,cod:"7/31/2026"},
+{name:"Yuma (Invenergy)",customer:"Invenergy",city:"Yuma",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:336.96,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Cathode",customer:"Ameresco",city:"Long Beach",state:"California",type:"AC Block",iso:"CAISO",bess:"CATL",mw:200,mwh:800,status:"Complete",year:2023,cod:"11/30/2023"},
+{name:"Whispering Willows",customer:"Interstate Power & Light",city:"St Latimer",state:"Iowa",type:"Product",iso:"MISO",bess:"CATL",mw:55,mwh:110,status:"In Progress",year:2026,cod:"11/28/2026"},
+{name:"Hemmingway",customer:"Idaho Power Company",city:"Melba",state:"Idaho",type:"Transition Services",iso:"MISO",bess:"Powin",mw:80,mwh:320,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Golden Plains",customer:"Interstate Power & Light",city:"St Lakota",state:"Iowa",type:"Product",iso:"MISO",bess:"CATL",mw:55,mwh:110,status:"In Progress",year:2026,cod:"11/28/2026"},
+{name:"Lonestar",customer:"energyRe",city:"Cameron",state:"South Carolina",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:273,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Purple Sage",customer:"Kiewit Power Constructors CO",city:"Nevada",state:"Nevada",type:"LNTP/PWA",iso:"CAISO",bess:"CATL",mw:400,mwh:1600,status:"In Progress",year:2027,cod:"6/1/2027"},
+{name:"El Sol",customer:"Invenergy",city:"Youngtown",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:236.25,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Separator",customer:"Ameresco",city:"Rancho Cucamonga",state:"California",type:"AC Block",iso:"CAISO",bess:"CATL",mw:112.5,mwh:450,status:"Complete",year:2023,cod:"9/30/2023"},
+{name:"Google - Mammoth",customer:"MN8",city:"Kanawha County",state:"West Virginia",type:"LNTP/PWA",iso:"PJM",bess:"EOS",mw:10,mwh:100,status:"In Progress",year:2029,cod:"12/1/2029"},
+{name:"Federal Building Microgrid",customer:"Ameresco",city:"Oklahoma City",state:"Oklahoma",type:"Product",iso:"SPP",bess:"Other",mw:0.25,mwh:0.5,status:"Complete",year:2023,cod:"6/30/2023"},
+{name:"Houston IV",customer:"SMT Energy",city:"Houston",state:"Texas",type:"Product",iso:"ERCOT",bess:"Trina",mw:160,mwh:240,status:"In Progress",year:2026,cod:"9/29/2026"},
+{name:"Panguitch",customer:"Black & Veatch",city:"Panguitch",state:"Utah",type:"Product",iso:"ERCOT",bess:"Samsung",mw:1,mwh:5,status:"Complete",year:2020,cod:"1/18/2020"},
+{name:"Houston XIV",customer:"SMT Energy",city:"Huffman",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:10,status:"In Progress",year:2026,cod:"4/1/2026"},
+{name:"Paloma",customer:"Invenergy",city:"Yuma",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:122.36,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Product Design",customer:"Black & Veatch / Dominion",city:"N/A",state:"Virginia",type:"Product",iso:"PJM",bess:"Risen",mw:0.68,mwh:2.75,status:"Complete",year:2024,cod:"5/1/2024"},
+{name:"North Fork",customer:"BRP",city:"Liberty Hill",state:"Texas",type:"Integration Services",iso:"ERCOT",bess:"CATL",mw:100,mwh:110,status:"Complete",year:2021,cod:"10/15/2021"},
+{name:"Bat Cave",customer:"BRP",city:"Mason",state:"Texas",type:"Integration Services",iso:"ERCOT",bess:"CATL",mw:100,mwh:110,status:"Complete",year:2021,cod:"10/29/2021"},
+{name:"Houston V",customer:"SMT Energy",city:"Houston",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:10,status:"In Progress",year:2026,cod:"4/1/2026"},
+{name:"Essex",customer:"Trina / Lightshift Energy",city:"Tucker",state:"Georgia",type:"HybridOS Implementation",iso:"ISONE",bess:"NA",mw:16,mwh:48,status:"In Progress",year:2026,cod:"5/1/2026"},
+{name:"Holyoke",customer:"Trina / Lightshift Energy",city:"Holyoke",state:"Massachusetts",type:"HybridOS Implementation",iso:"ISONE",bess:"Other",mw:5,mwh:20,status:"In Progress",year:2026,cod:"6/1/2026"},
+{name:"Dry Bridge",customer:"Dominion Energy",city:"Midlothian",state:"Virginia",type:"Transition Services",iso:"PJM",bess:"Powin",mw:20,mwh:95.04,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Santa Paula",customer:"esVolta",city:"Santa Paula",state:"California",type:"Transition Services",iso:"CAISO",bess:"Powin",mw:0,mwh:75.9,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Mosquito 3",customer:"Stem",city:"Fort Mohave",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:67.5,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Watersprout",customer:"Stem",city:"Fort Mohave",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:64.8,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Foothills I",customer:"Invenergy",city:"Yuma",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:62.79,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Foothills II",customer:"Invenergy",city:"Yuma",state:"Arizona",type:"Transition Services",iso:"CAISO",bess:"Powin",mw:0,mwh:62.79,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Cotton Center",customer:"Invenergy",city:"Gila Bend",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:61.18,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Gila Bend I",customer:"Invenergy",city:"Gila Bend",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:57.96,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Gila Bend II",customer:"Invenergy",city:"Gila Bend",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:57.96,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Hyder I",customer:"Invenergy",city:"Hyder",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:57.96,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Slocum",customer:"DTE Energy",city:"Romulus",state:"Michigan",type:"Transition Services",iso:"MISO",bess:"Powin",mw:63,mwh:56,status:"Complete",year:2025,cod:"10/1/2025"},
+{name:"Hyder II",customer:"Invenergy",city:"Yuma",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:52.44,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Ipswich",customer:"Trina / Lightshift Energy",city:"Ipswich",state:"Massachusetts",type:"HybridOS Implementation",iso:"ISONE",bess:"Other",mw:5,mwh:20,status:"In Progress",year:2026,cod:"6/1/2026"},
+{name:"Mosquito 1",customer:"Stem",city:"Cochise",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:45,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Mosquito 2",customer:"Stem",city:"Sahuarita",state:"Arizona",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:45,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Pueblon 1",customer:"BRP",city:"Eagle Pass",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"SunGrow",mw:20,mwh:22,status:"Complete",year:2021,cod:"11/5/2021"},
+{name:"Zapata 1",customer:"BRP",city:"Zapata",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"SunGrow",mw:20,mwh:22,status:"Complete",year:2021,cod:"11/19/2021"},
+{name:"Zapata 2",customer:"BRP",city:"Zapata",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"SunGrow",mw:20,mwh:22,status:"Complete",year:2021,cod:"11/19/2021"},
+{name:"Pueblo 2",customer:"BRP",city:"Eagle Pass",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"SunGrow",mw:20,mwh:22,status:"Complete",year:2021,cod:"11/5/2021"},
+{name:"Desert Star",customer:"Invenergy",city:"Buckeye",state:"Arizona",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:36.8,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Cameron (Apex)",customer:"Apex Clean Energy",city:"Rio Hondo",state:"Texas",type:"Transition Services",iso:"ERCOT",bess:"Powin",mw:16.8,mwh:32.8,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Angleton",customer:"BRP",city:"Houston",state:"Texas",type:"Integration Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2022,cod:"3/31/2022"},
+{name:"Orangeville",customer:"Invenergy",city:"Warsaw",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:0,mwh:32.2,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Summerside",customer:"AKA Group",city:"Summerside",state:"International",type:"Transition Services",iso:"AESO",bess:"Powin",mw:0,mwh:31.5,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Alvin (BRP)",customer:"BRP",city:"Alvin",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2020,cod:"10/9/2020"},
+{name:"Brazoria",customer:"BRP",city:"Brazoria",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2020,cod:"11/10/2020"},
+{name:"West Warwick I",customer:"West Warwick Energy Storage 1 LLC",city:"Warwick",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:0,mwh:25.92,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Dickinson",customer:"BRP",city:"Dickinson",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2021,cod:"5/26/2021"},
+{name:"Alcoutim",customer:"Galp",city:"Algarve",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:24.75,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Sarnia (MEPPI)",customer:"Mitsubishi Electric Power Products, Inc",city:"Corunna",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:24.08,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Swoose",customer:"Jupiter Power",city:"Pyote",state:"Texas",type:"Transition Services",iso:"ERCOT",bess:"Powin",mw:0,mwh:22.5,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Flower Valley",customer:"Jupiter Power",city:"Pecos",state:"Texas",type:"Transition Services",iso:"CAISO",bess:"Powin",mw:10,mwh:22.5,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Negroni 1",customer:"Stem",city:"North Dartmouth",state:"Massachusetts",type:"Transition Services",iso:"ISONE",bess:"Powin",mw:0,mwh:22.5,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Heights",customer:"BRP",city:"Texas City",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2021,cod:"4/16/2021"},
+{name:"Loop 463",customer:"BRP",city:"Victoria",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2021,cod:"5/12/2021"},
+{name:"Magnolia",customer:"BRP",city:"League City",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2021,cod:"3/17/2021"},
+{name:"Odessa",customer:"BRP",city:"Odessa",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2021,cod:"2/17/2021"},
+{name:"Ranchtown",customer:"BRP",city:"San Antonio",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"SunGrow",mw:10,mwh:11,status:"Complete",year:2021,cod:"10/29/2021"},
+{name:"Sweeny",customer:"BRP",city:"Sweeny",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"CLOU",mw:10,mwh:11,status:"Complete",year:2021,cod:"4/28/2021"},
+{name:"Lopeno",customer:"BRP",city:"Zapata",state:"Texas",type:"Interim Services",iso:"ERCOT",bess:"SunGrow",mw:10,mwh:11,status:"Complete",year:2022,cod:"3/18/2022"},
+{name:"Libra",customer:"Engie",city:"Seguin",state:"Texas",type:"Product",iso:"ERCOT",bess:"CATL",mw:200,mwh:200,status:"Complete",year:2023,cod:"10/1/2023"},
+{name:"West Warwick III",customer:"West Warwick Energy Storage 3 LLC",city:"Warwick",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:0,mwh:21,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Sun Valley",customer:"Engie",city:"Abbott",state:"Texas",type:"Product",iso:"ERCOT",bess:"CATL",mw:100,mwh:110,status:"Complete",year:2023,cod:"11/30/2023"},
+{name:"Vega 5 / Cedar 2",customer:"VC Renewables",city:"Calipatria",state:"California",type:"AC Block",iso:"CAISO",bess:"CATL",mw:50,mwh:200,status:"In Progress",year:2026,cod:"6/27/2026"},
+{name:"Apache Hill",customer:"Vitis Energy",city:"Granbury",state:"Texas",type:"HybridOS Implementation",iso:"ERCOT",bess:"SunGrow",mw:200,mwh:400,status:"In Progress",year:2026,cod:"5/1/2026"},
+{name:"Bruce Power",customer:"Sitka Power",city:"Tiverton",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:19.04,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Hummingbird (Comm)",customer:"esVolta",city:"San Jose",state:"California",type:"Commissioning",iso:"CAISO",bess:"Powin",mw:75,mwh:403.2,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Croton Harmon",customer:"Arevon Energy",city:"Croton-On-Hudson",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:3.8,mwh:18.72,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Triple Butte",customer:"Jupiter Power",city:"Fort Stockton",state:"Texas",type:"Transition Services",iso:"ERCOT",bess:"Powin",mw:0,mwh:17.1,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"West Warwick II",customer:"West Warwick Energy Storage 2 LLC",city:"Warwick",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:0,mwh:16.4,status:"Complete",year:2025,cod:"10/1/2025"},
+{name:"ELMR",customer:"Idaho Power Company",city:"Mountain Home",state:"Idaho",type:"Transition Services",iso:"MISO",bess:"Powin",mw:4,mwh:16,status:"Complete",year:2025,cod:"11/1/2025"},
+{name:"Putah Creek",customer:"Solvida Design",city:"Winters",state:"California",type:"Transition Services",iso:"CAISO",bess:"Powin",mw:0,mwh:15.12,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Yabucoa",customer:"Infinigen",city:"Yabucoa",state:"Puerto Rico",type:"Product",iso:"PREPA",bess:"CATL",mw:14.45,mwh:4.76,status:"In Progress",year:2026,cod:"2/17/2026"},
+{name:"Wever",customer:"Interstate Power & Light",city:"Fort Madison",state:"Iowa",type:"Product",iso:"MISO",bess:"CATL",mw:99,mwh:400,status:"Complete",year:2025,cod:"11/13/2025"},
+{name:"Edgewater",customer:"Wisconsin Power & Light",city:"Sheboygan",state:"Wisconsin",type:"Product",iso:"MISO",bess:"CATL",mw:100,mwh:400,status:"In Progress",year:2026,cod:"12/26/2026"},
+{name:"Manhattan",customer:"Kelson Energy",city:"Minneapolis",state:"Kansas",type:"Turnkey EPC",iso:"SPP",bess:"Risen",mw:1,mwh:4.7,status:"Complete",year:2021,cod:"4/15/2021"},
+{name:"Phase 3 (WPL)",customer:"Wisconsin Power & Light",city:"Multiple",state:"Wisconsin",type:"Product",iso:"MISO",bess:"CATL",mw:100,mwh:536,status:"In Progress",year:2026,cod:"11/1/2026"},
+{name:"Martin Microgrid",customer:"Martin Energy",city:"Lower Hudson Valley",state:"New York",type:"Product",iso:"NYISO",bess:"CLOU",mw:2,mwh:2.1,status:"Complete",year:2023,cod:"2/17/2023"},
+{name:"Coca Cola Bottling Plant",customer:"Martin Energy",city:"Cidra",state:"Puerto Rico",type:"Product",iso:"PREPA",bess:"CLOU",mw:2,mwh:1.5,status:"Complete",year:2022,cod:"3/30/2022"},
+{name:"Brandywine",customer:"Onward Energy",city:"Brandywine",state:"Maryland",type:"Transition Services",iso:"PJM",bess:"Powin",mw:4,mwh:14,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"NY3 Pomona",customer:"Key Capture Energy",city:"Pomona",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:0,mwh:13.95,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Coca Cola Pet Plastics",customer:"Martin Energy",city:"Cidra",state:"Puerto Rico",type:"Product",iso:"PREPA",bess:"CLOU",mw:2,mwh:1.5,status:"Complete",year:2022,cod:"2/1/2022"},
+{name:"McLauchlin",customer:"NCEMC",city:"Raeford",state:"North Carolina",type:"Turnkey EPC",iso:"Southeast",bess:"CATL",mw:15,mwh:30,status:"Complete",year:2024,cod:"12/1/2024"},
+{name:"Butler",customer:"NCEMC",city:"Hope Mills",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"CATL",mw:10,mwh:20,status:"Complete",year:2024,cod:"12/1/2024"},
+{name:"Archie Horne",customer:"NCEMC",city:"Beulaville",state:"North Carolina",type:"Turnkey EPC",iso:"Southeast",bess:"CATL",mw:10,mwh:20,status:"Complete",year:2024,cod:"11/1/2024"},
+{name:"Double Creek",customer:"NCEMC",city:"Pinnacle",state:"North Carolina",type:"Turnkey EPC",iso:"Southeast",bess:"CATL",mw:5,mwh:10,status:"Complete",year:2024,cod:"12/1/2024"},
+{name:"Fairfield Harbor",customer:"NCEMC",city:"New Bern",state:"North Carolina",type:"Turnkey EPC",iso:"Southeast",bess:"CATL",mw:5,mwh:10,status:"Complete",year:2024,cod:"12/1/2024"},
+{name:"Wallum",customer:"Puresky Energy",city:"Douglas",state:"Massachusetts",type:"Transition Services",iso:"ISONE",bess:"Powin",mw:5,mwh:12.88,status:"Complete",year:2025,cod:"11/1/2025"},
+{name:"Brunswick",customer:"NCEMC",city:"Bolivia",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:5,mwh:10,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Cateret-Craven",customer:"NCEMC",city:"Maysville",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:5,mwh:10,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Central",customer:"NCEMC",city:"Lillington",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:5,mwh:10,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Randolph",customer:"NCEMC",city:"Asheboro",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:5,mwh:10,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Pee Dee",customer:"NCEMC",city:"Rockingham",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:5,mwh:10,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Wake",customer:"NCEMC",city:"Wake Forest",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:5,mwh:10,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Medoc",customer:"NCEMC",city:"Enfield",state:"North Carolina",type:"Turnkey EPC",iso:"Southeast",bess:"CATL",mw:2.5,mwh:5,status:"Complete",year:2024,cod:"12/1/2024"},
+{name:"Davistown Mercer",customer:"NCEMC",city:"Pinetops",state:"North Carolina",type:"Turnkey EPC",iso:"Southeast",bess:"CATL",mw:2.5,mwh:5,status:"Complete",year:2024,cod:"12/1/2024"},
+{name:"Four County",customer:"NCEMC",city:"Rocky Point",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:2.5,mwh:5,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Jones Onslow",customer:"NCEMC",city:"Hubert",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:2.5,mwh:5,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"South River",customer:"NCEMC",city:"Fayetteville",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:2.5,mwh:5,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Tri-County",customer:"NCEMC",city:"Goldsboro",state:"North Carolina",type:"Turnkey EPC",iso:"PJM",bess:"Risen",mw:2.5,mwh:5,status:"Complete",year:2023,cod:"3/15/2023"},
+{name:"Perry",customer:"NREMC",city:"Fort Wayne",state:"Indiana",type:"Turnkey EPC",iso:"PJM",bess:"CLOU",mw:7,mwh:25.2,status:"Complete",year:2021,cod:"6/30/2021"},
+{name:"Indian Creek",customer:"NREMC",city:"Columbia City",state:"Indiana",type:"Turnkey EPC",iso:"PJM",bess:"CLOU",mw:7,mwh:21.6,status:"Complete",year:2021,cod:"6/30/2021"},
+{name:"Kmonterrey",customer:"Kia",city:"Nuevo Leom",state:"International",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:12.04,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"WESR",customer:"Idaho Power Company",city:"Weiser",state:"Idaho",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:3,mwh:12,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Palmer Skyes",customer:"Stem",city:"Palmer",state:"Massachusetts",type:"Transition Services",iso:"ISONE",bess:"Powin",mw:0,mwh:12,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Woodland",customer:"NREMC",city:"Fort Wayne",state:"Indiana",type:"Turnkey EPC",iso:"PJM",bess:"CLOU",mw:7,mwh:18,status:"Complete",year:2022,cod:"6/1/2022"},
+{name:"Gateway",customer:"NREMC",city:"Columbia City",state:"Indiana",type:"Turnkey EPC",iso:"PJM",bess:"CLOU",mw:7,mwh:18,status:"Complete",year:2022,cod:"6/24/2022"},
+{name:"Aboite",customer:"NREMC",city:"Fort Wayne",state:"Indiana",type:"Turnkey EPC",iso:"PJM",bess:"CLOU",mw:7,mwh:18,status:"Complete",year:2022,cod:"6/18/2022"},
+{name:"Wheatfield",customer:"NREMC",city:"Wheatfield",state:"Indiana",type:"Turnkey EPC",iso:"PJM",bess:"SunGrow",mw:15,mwh:5,status:"Complete",year:2020,cod:"6/18/2020"},
+{name:"Coffee Creek",customer:"Portland General Electric",city:"Sherwood",state:"Oregon",type:"Turnkey EPC",iso:"N/A",bess:"Risen",mw:17,mwh:34,status:"Complete",year:2024,cod:"11/22/2024"},
+{name:"Overhill",customer:"Pulse Clean Energy",city:"Rothienorman",state:"International",type:"Commissioning",iso:"International",bess:"Powin",mw:50,mwh:139.5,status:"In Progress",year:2026,cod:"2/1/2026"},
+{name:"Hou02401",customer:"Ravenvolt / Prologis",city:"Houston",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:20,status:"Complete",year:2025,cod:"1/28/2025"},
+{name:"Hou05102 - Top Gear",customer:"Ravenvolt / Prologis",city:"La Porte",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:10,status:"In Progress",year:2026,cod:"4/1/2026"},
+{name:"Dal01745",customer:"Ravenvolt / Prologis",city:"Grand Prairie",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:10,status:"Complete",year:2025,cod:"1/13/2025"},
+{name:"DAL01805",customer:"Ravenvolt / Prologis",city:"Arlington",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:20,status:"Complete",year:2025,cod:"1/30/2025"},
+{name:"Scarlet II",customer:"Rosendin Electric Inc",city:"San Joaquin",state:"California",type:"Integration Services",iso:"CAISO",bess:"LG Energy Solutions",mw:150,mwh:600,status:"Complete",year:2024,cod:"12/6/2024"},
+{name:"La Grange",customer:"Strata Clean Energy",city:"La Grange",state:"North Carolina",type:"Transition Services",iso:"PJM",bess:"Powin",mw:0,mwh:10.8,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Fort River Solar",customer:"Puresky Energy",city:"Amherst",state:"Massachusetts",type:"Transition Services",iso:"ISONE",bess:"Powin",mw:10.5,mwh:10.5,status:"Complete",year:2025,cod:"11/1/2025"},
+{name:"OUC",customer:"Ameresco",city:"St Cloud",state:"Florida",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:0,mwh:10.5,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Dark and Stormy I",customer:"Stem",city:"Goshen",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:0,mwh:10.5,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Dark and Stormy II",customer:"Stem",city:"Goshen",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:0,mwh:10.5,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"West Columbia",customer:"Glidepath",city:"West Columbia",state:"Texas",type:"Transition Services",iso:"ERCOT",bess:"Powin",mw:9.9,mwh:10.43,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Windsor",customer:"Mitsubishi Electric Power Products, Inc",city:"Windsor",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:9.52,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Elmbrook",customer:"Puresky Energy",city:"Castleton-On-Hudson",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:4,mwh:9.2,status:"Complete",year:2025,cod:"11/1/2025"},
+{name:"Oak Hill 1",customer:"Puresky Energy",city:"Delanson",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:4,mwh:9.2,status:"Complete",year:2025,cod:"11/1/2025"},
+{name:"Oak Hill 2",customer:"Puresky Energy",city:"Delanson",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:4,mwh:9.2,status:"Complete",year:2025,cod:"11/1/2025"},
+{name:"Countryside",customer:"Countryside Energy",city:"Allegany",state:"New York",type:"Transition Services",iso:"NYISO",bess:"Powin",mw:2.73,mwh:9.2,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Enbridge",customer:"Honeywell",city:"Sarnia",state:"International",type:"Transition Services",iso:"AESO",bess:"Powin",mw:0,mwh:9,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Molson Coors",customer:"Honeywell",city:"Etobicoke",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:9,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Angelo",customer:"Apex Clean Energy",city:"San Angelo",state:"Texas",type:"Transition Services",iso:"ERCOT",bess:"Powin",mw:100,mwh:200,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Great Kiskadee Storage",customer:"Apex Clean Energy",city:"San Juan",state:"Texas",type:"Transition Services",iso:"ERCOT",bess:"Powin",mw:100,mwh:200,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Pastoria",customer:"ARB",city:"Lebec",state:"California",type:"LNTP/PWA",iso:"CAISO",bess:"Other",mw:80,mwh:320,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Black Mesa",customer:"Idaho Power Company",city:"King Hill",state:"Idaho",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:40,mwh:160,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Hemmingway Expansion",customer:"Idaho Power Company",city:"Melba",state:"Idaho",type:"Transition Services",iso:"MISO",bess:"Powin",mw:36,mwh:144,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Dallas (SMT)",customer:"SMT Energy",city:"Dallas",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:10,status:"Complete",year:2025,cod:"9/22/2025"},
+{name:"Dallas III",customer:"SMT Energy",city:"Dallas",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:10,status:"In Progress",year:2026,cod:"1/23/2026"},
+{name:"Mission II",customer:"SMT Energy",city:"Mission",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:10,status:"Complete",year:2025,cod:"1/24/2025"},
+{name:"Alamo (SMT)",customer:"SMT Energy",city:"Alamo",state:"Texas",type:"Product",iso:"ERCOT",bess:"Risen",mw:10,mwh:10,status:"Complete",year:2023,cod:"10/26/2023"},
+{name:"OWS",customer:"VC Renewables",city:"Ocotillo Wells",state:"California",type:"AC Block",iso:"CAISO",bess:"Risen",mw:60,mwh:223,status:"Complete",year:2023,cod:"8/31/2023"},
+{name:"Upton 2",customer:"Vistra",city:"Irving",state:"Texas",type:"Product",iso:"ERCOT",bess:"Samsung",mw:10,mwh:42,status:"Complete",year:2019,cod:"2/14/2019"},
+{name:"Grant County",customer:"Wisconsin Power & Light",city:"Potosi",state:"Wisconsin",type:"Product",iso:"MISO",bess:"CATL",mw:100,mwh:400,status:"Complete",year:2025,cod:"7/28/2025"},
+{name:"Wood County",customer:"Wisconsin Power & Light",city:"Nekoosa",state:"Wisconsin",type:"Product",iso:"MISO",bess:"CATL",mw:75,mwh:300,status:"Complete",year:2025,cod:"10/18/2025"},
+{name:"Scarlet",customer:"Rosendin Electric, Inc.",city:"San Joaquin",state:"California",type:"Integration Services",iso:"CAISO",bess:"Other",mw:48,mwh:180,status:"Complete",year:2024,cod:"4/15/2024"},
+{name:"Danville II",customer:"Trina / Lightshift Energy",city:"Danville",state:"Virginia",type:"HybridOS Implementation",iso:"PJM",bess:"Other",mw:11,mwh:44,status:"In Progress",year:2026,cod:"3/1/2026"},
+{name:"Wakefield",customer:"Trina / Lightshift Energy",city:"Wakefield",state:"Massachusetts",type:"HybridOS Implementation",iso:"ISONE",bess:"Trina",mw:5,mwh:20,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Holden",customer:"Trina / Lightshift Energy",city:"Holden",state:"Massachusetts",type:"HybridOS Implementation",iso:"ISONE",bess:"Other",mw:5,mwh:19.79,status:"Complete",year:2024,cod:"11/1/2024"},
+{name:"Groton Substation",customer:"Trina / Lightshift Energy",city:"Groton",state:"Massachusetts",type:"HybridOS Implementation",iso:"ISONE",bess:"Other",mw:3.7,mwh:7.79,status:"Complete",year:2024,cod:"11/1/2024"},
+{name:"Groton 2",customer:"Trina / Lightshift Energy",city:"Groton",state:"Massachusetts",type:"HybridOS Implementation",iso:"ISONE",bess:"Other",mw:3.7,mwh:7.79,status:"Complete",year:2024,cod:"11/1/2024"},
+{name:"Paxton",customer:"Trina / Lightshift Energy",city:"Paxton",state:"Massachusetts",type:"HybridOS Implementation",iso:"ISONE",bess:"Trina",mw:3.7,mwh:7.79,status:"Complete",year:2024,cod:"10/1/2024"},
+{name:"FILR",customer:"Idaho Power Company",city:"Filer",state:"Idaho",type:"Transition Services",iso:"MISO",bess:"Powin",mw:2,mwh:8,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"MLBA",customer:"Idaho Power Company",city:"Melba",state:"Idaho",type:"Transition Services",iso:"MISO",bess:"Powin",mw:2,mwh:8,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Sedgwick / Westar",customer:"Evergy",city:"Wichita",state:"Kansas",type:"Transition Services",iso:"OTHER",bess:"Powin",mw:1,mwh:4,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Nir David",customer:"Auto Chen Ltd",city:"Port of Israel",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:4.6,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Or Haner",customer:"Auto Chen Ltd",city:"Or Haner",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:4.6,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Nir Yitzhak 2",customer:"Auto Chen Ltd",city:"Port of Israel",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:0,mwh:4.6,status:"Complete",year:2025,cod:"12/1/2025"},
+{name:"Nofar Kibbutz",customer:"Auto Chen Ltd",city:"Port of Israel",state:"International",type:"Transition Services",iso:"International",bess:"Powin",mw:1.2,mwh:3.15,status:"Complete",year:2025,cod:"12/1/2025"}
+];
+
+// ── Resolve coordinates ──
+PROJECTS.forEach(p => {
+  const keys = [
+    p.city+","+p.state,
+    p.city+",International",
+    p.state ? p.city+","+p.state : null
+  ];
+  for (const k of keys) {
+    if (k && GEO[k]) { p.lat = GEO[k][0]; p.lng = GEO[k][1]; return; }
+  }
+  // fallback: state center approximations
+  const STATE_CENTER = {
+    "Iowa":[42.0,-93.5],"Idaho":[44.0,-114.7],"Arizona":[34.0,-111.1],
+    "Virginia":[37.4,-79.5],"International":[48.0,10.0]
+  };
+  if (STATE_CENTER[p.state]) { p.lat = STATE_CENTER[p.state][0]; p.lng = STATE_CENTER[p.state][1]; }
+});
+
+// add jitter so stacked markers separate
+const seen = {};
+PROJECTS.forEach(p => {
+  if (!p.lat) return;
+  const key = p.lat.toFixed(3)+","+p.lng.toFixed(3);
+  if (seen[key]) {
+    p.lat += (Math.random()-0.5)*0.04;
+    p.lng += (Math.random()-0.5)*0.04;
+  }
+  seen[key] = true;
+});
+
+// ── Init map ──
+const map = L.map('map',{zoomControl:false}).setView([37,-97],5);
+L.control.zoom({position:'topright'}).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains:'abcd', maxZoom:19
+}).addTo(map);
+
+const clusterGroup = L.markerClusterGroup({
+  maxClusterRadius: 45,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  iconCreateFunction: function(cluster) {
+    const count = cluster.getChildCount();
+    let size = count < 10 ? 'small' : count < 30 ? 'medium' : 'large';
+    return L.divIcon({ html:'<div>'+count+'</div>', className:'marker-cluster marker-cluster-'+size, iconSize: L.point(40,40) });
+  }
+});
+
+function statusColor(s) {
+  if (s === 'Complete') return '#2ecc71';
+  if (s === 'In Progress') return '#f39c12';
+  return '#3498db';
+}
+
+function createIcon(status, mwh) {
+  const color = statusColor(status);
+  const r = Math.max(6, Math.min(18, 6 + Math.sqrt(mwh||0)*0.4));
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:${r*2}px;height:${r*2}px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.6);opacity:0.85;box-shadow:0 0 8px ${color}80;"></div>`,
+    iconSize:[r*2,r*2], iconAnchor:[r,r]
+  });
+}
+
+const markers = [];
+PROJECTS.forEach(p => {
+  if (!p.lat) return;
+  const m = L.marker([p.lat, p.lng], { icon: createIcon(p.status, p.mwh) });
+  m.bindPopup(`
+    <div class="popup-title">${p.name}</div>
+    <div class="popup-customer">${p.customer}</div>
+    <div class="popup-grid">
+      <div><div class="popup-label">Location</div><div class="popup-value">${p.city}, ${p.state}</div></div>
+      <div><div class="popup-label">Contract</div><div class="popup-value">${p.type}</div></div>
+      <div><div class="popup-label">MW at POI</div><div class="popup-value">${p.mw}</div></div>
+      <div><div class="popup-label">MWh at POI</div><div class="popup-value">${p.mwh}</div></div>
+      <div><div class="popup-label">ISO</div><div class="popup-value">${p.iso}</div></div>
+      <div><div class="popup-label">BESS</div><div class="popup-value">${p.bess}</div></div>
+      <div><div class="popup-label">COD</div><div class="popup-value">${p.cod}</div></div>
+      <div><div class="popup-label">Year</div><div class="popup-value">${p.year}</div></div>
+    </div>
+    <div style="margin-top:8px"><span class="popup-status ${p.status==='Complete'?'complete':'in-progress'}">${p.status}</span></div>
+  `, {maxWidth:320, minWidth:240});
+  m.projectData = p;
+  markers.push(m);
+});
+
+// ── Populate filters ──
+function unique(arr) { return [...new Set(arr)].filter(Boolean).sort(); }
+const states = unique(PROJECTS.map(p=>p.state));
+const types = unique(PROJECTS.map(p=>p.type));
+const isos = unique(PROJECTS.map(p=>p.iso));
+
+const stateSelect = document.getElementById('filterState');
+states.forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=s; stateSelect.appendChild(o); });
+const contractSelect = document.getElementById('filterContract');
+types.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; contractSelect.appendChild(o); });
+const isoSelect = document.getElementById('filterISO');
+isos.forEach(i => { const o = document.createElement('option'); o.value=i; o.textContent=i; isoSelect.appendChild(o); });
+
+// ── Filter logic ──
+function applyFilters() {
+  const status = document.getElementById('filterStatus').value;
+  const state = stateSelect.value;
+  const type = contractSelect.value;
+  const iso = isoSelect.value;
+  const search = document.getElementById('searchInput').value.toLowerCase();
+
+  clusterGroup.clearLayers();
+  const list = document.getElementById('projectList');
+  list.innerHTML = '';
+
+  let totalMW = 0, totalMWh = 0, count = 0;
+
+  markers.forEach(m => {
+    const p = m.projectData;
+    if (status !== 'all' && p.status !== status) return;
+    if (state !== 'all' && p.state !== state) return;
+    if (type !== 'all' && p.type !== type) return;
+    if (iso !== 'all' && p.iso !== iso) return;
+    if (search && !(p.name.toLowerCase().includes(search) || p.customer.toLowerCase().includes(search) || p.city.toLowerCase().includes(search) || p.state.toLowerCase().includes(search))) return;
+
+    clusterGroup.addLayer(m);
+    count++;
+    totalMW += (p.mw || 0);
+    totalMWh += (p.mwh || 0);
+
+    const card = document.createElement('div');
+    card.className = 'project-card status-' + (p.status === 'Complete' ? 'complete' : 'in-progress');
+    card.innerHTML = `
+      <div class="project-card-name">${p.name}</div>
+      <div class="project-card-customer">${p.customer}</div>
+      <div class="project-card-detail">${p.city}, ${p.state} &bull; ${p.mw} MW / ${p.mwh} MWh</div>
+    `;
+    card.addEventListener('click', () => {
+      map.setView([p.lat, p.lng], 12);
+      m.openPopup();
+    });
+    list.appendChild(card);
+  });
+
+  document.getElementById('projectCount').textContent = count;
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-item"><div class="stat-value">${count}</div><div class="stat-label">Projects</div></div>
+    <div class="stat-item"><div class="stat-value">${(totalMW/1000).toFixed(1)} GW</div><div class="stat-label">Total MW</div></div>
+    <div class="stat-item"><div class="stat-value">${(totalMWh/1000).toFixed(1)} GWh</div><div class="stat-label">Total MWh</div></div>
+    <div class="stat-item"><div class="stat-value">${unique(markers.filter(m2=>clusterGroup.hasLayer(m2)).map(m2=>m2.projectData.state)).length}</div><div class="stat-label">States/Regions</div></div>
+  `;
+}
+
+map.addLayer(clusterGroup);
+applyFilters();
+
+// Event listeners
+['filterStatus','filterState','filterContract','filterISO'].forEach(id => {
+  document.getElementById(id).addEventListener('change', applyFilters);
+});
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+</script>
+</body>
+</html>
